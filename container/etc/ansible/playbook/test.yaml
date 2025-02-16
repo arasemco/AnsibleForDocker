@@ -1,0 +1,38 @@
+---
+- name: Disable strict host key checking and configure SSH keys
+  hosts: all
+  gather_facts: no
+  vars:
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+  tasks:
+    - name: Ensure .ssh directory exists
+      ansible.builtin.file:
+        path: "~/.ssh"
+        state: directory
+        mode: '0700'
+
+    - name: Generate SSH key if not exists
+      ansible.builtin.openssh_keypair:
+        path: "~/.ssh/id_rsa"
+        type: rsa
+        size: 1024
+        state: present
+        mode: '0600'
+
+#    - name: Add public key to authorized_keys
+#      ansible.builtin.authorized_key:
+#        user: "{{ ansible_user }}"
+#        state: present
+#        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+#    - name: Add remote host to known_hosts
+#      ansible.builtin.known_hosts:
+#        name: "{{ inventory_hostname }}"
+#        key: "{{ lookup('pipe', 'ssh-keyscan -H ' + inventory_hostname) }}"
+#        state: present
+#        path: "~/.ssh/known_hosts"
+#
+#    - name: Display SSH setup status
+#      ansible.builtin.debug:
+#        msg: "SSH keys configured for {{ ansible_user }} on {{ inventory_hostname }}"

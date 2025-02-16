@@ -1,0 +1,42 @@
+services:
+  controller:
+    build:
+      context: .
+      dockerfile: docker/ansible.Dockerfile
+    volumes:
+      - ./container/usr/local/bin/ansible-setup.sh:/usr/local/bin/ansible-setup.sh:ro
+      - ./container/etc/ansible:/etc/ansible
+      - ./container/etc/hosts:/etc/hosts:ro
+    tty: true
+
+  arch:
+    build:
+      context: .
+      dockerfile: docker/target.Dockerfile
+      args:
+        BASE_IMAGE: archlinux:latest
+    tty: true
+
+  alma:
+    build:
+      context: .
+      dockerfile: docker/target.Dockerfile
+      args:
+        BASE_IMAGE: almalinux:latest
+    tty: true
+
+  alpine:
+    build:
+      context: .
+      dockerfile: docker/target.Dockerfile
+      args:
+        BASE_IMAGE: alpine:latest
+    tty: true
+
+  ubuntu:
+    build:
+      context: .
+      dockerfile: docker/target.Dockerfile
+      args:
+        BASE_IMAGE: ubuntu:latest
+    tty: true

@@ -1,0 +1,4 @@
+.idea
+*.log
+.env
+/my_first_ee/context/

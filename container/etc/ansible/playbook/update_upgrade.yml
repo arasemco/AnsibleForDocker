@@ -1,0 +1,21 @@
+- name: Update and upgrade all packages
+  hosts: all
+  become: true
+  tasks:
+    - name: Update package cache
+      ansible.builtin.command:
+        cmd: "{{ update_command }}"
+
+    - name: Upgrade all packages
+      ansible.builtin.command:
+        cmd: "{{ upgrade_command }}"
+
+  vars:
+    update_command: >
+      {{ 'yum -y update' if ansible_os_family == 'RedHat' else
+         'apt-get update -y' if ansible_os_family == 'Debian' else
+         'apk update' if ansible_os_family == 'Alpine' else '' }}
+    upgrade_command: >
+      {{ 'yum -y upgrade' if ansible_os_family == 'RedHat' else
+         'apt-get upgrade -y' if ansible_os_family == 'Debian' else
+         'apk upgrade --available' if ansible_os_family == 'Alpine' else '' }}

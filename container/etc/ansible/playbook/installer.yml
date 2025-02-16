@@ -1,0 +1,42 @@
+- name: Update and upgrade all packages
+  hosts: all
+  become: true
+  tasks:
+    - name: Update package cache (Debian, RedHat, Alpine)
+      ansible.builtin.package:
+        update_cache: yes
+        #upgrade: yes
+
+    - name: Upgrade all packages (Debian-based systems)
+      ansible.builtin.command:
+        cmd: apt-get upgrade -y
+      when: ansible_os_family == "Debian"
+
+    - name: Upgrade all packages (RedHat-based systems)
+      ansible.builtin.command:
+        cmd: yum -y update
+      when: ansible_os_family == "RedHat"
+
+    - name: Upgrade all packages (Alpine-based systems)
+      ansible.builtin.command:
+        cmd: apk upgrade --available
+      when: ansible_os_family == "Alpine"
+
+
+- name: Install few basic packages for debugging
+  hosts: all
+  become: false    # Use privilege escalation (sudo/root)
+  tasks:
+    - name: Install rsyslog all systems
+      ansible.builtin.package:
+        name:
+          - vim
+          - nano
+          - sudo
+          - bash
+          - procps
+          - python3
+
+#          - curl
+#          - rsyslog
+        state: present

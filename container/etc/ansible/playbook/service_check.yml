@@ -1,0 +1,43 @@
+- name: Check if rsyslog is running
+  hosts: all
+  become: false
+  tasks:
+    - name: Check if rsyslog process exists
+      ansible.builtin.shell: "ps -ef | grep [r]syslog"
+      register: rsyslog_check
+      failed_when: rsyslog_check.rc > 1
+
+    - name: Display rsyslog status
+      ansible.builtin.debug:
+        msg: "Rsyslog is {{ 'running' if rsyslog_check.stdout else 'not running' }}"
+
+
+#- name: Check if rsyslog is running
+#  hosts: all
+#  become: false
+#  tasks:
+#    - name: Verify rsyslog service status
+#      ansible.builtin.service_facts:
+
+#    - name: Ensure rsyslog is running
+#      ansible.builtin.debug:
+#        msg: >
+#          The rsyslog service is
+#          {{ 'running' if ansible_facts.services['rsyslog'].state == 'running' else 'not running' }}
+#      when: ansible_facts.services['rsyslog'] is defined
+
+
+- name: Check rsyslog target configuration
+  hosts: all
+  become: false
+  tasks:
+    - name: Search for target configuration in rsyslog files
+      ansible.builtin.shell: "grep -E 'Target|Port' /etc/rsyslog.conf /etc/rsyslog.d/*.conf || true"
+      register: rsyslog_target_check
+      failed_when: false  # Allow playbook to continue even if grep finds nothing
+
+    - name: Display rsyslog target configuration results
+      ansible.builtin.debug:
+        msg: |
+          The rsyslog target configuration for {{ inventory_hostname }} is:
+          {{ rsyslog_target_check.stdout if rsyslog_target_check.stdout else 'No target configuration found.' }}

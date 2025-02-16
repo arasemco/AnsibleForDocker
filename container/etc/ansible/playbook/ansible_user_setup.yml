@@ -1,0 +1,133 @@
+- name: Ensure bash, sudo, and create ansible user
+  hosts: all
+  remote_user: root
+
+  vars:
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+  tasks:
+    - name: Ensure bash and sudo is installed
+      ansible.builtin.package:
+        name:
+          - bash
+          - sudo
+        state: present
+
+#    - name: Generate a hashed password for ansible user
+#      ansible.builtin.command:
+#        cmd: python3 -c "import crypt; print(crypt.crypt('ansible', crypt.mksalt(crypt.METHOD_SHA512)))"
+#      register: hashed_password
+#      delegate_to: localhost
+
+    - name: Ensure the ansible user exists
+      ansible.builtin.user:
+        name: ansible
+#        password: "{{ hashed_password.stdout }}"
+        uid: 3301
+        shell: /bin/bash
+        home: /home/ansible
+        create_home: yes
+        generate_ssh_key: true
+        ssh_key_bits: 4096
+        state: present
+
+    - name: Ensure correct permissions for the SSH directory
+      ansible.builtin.file:
+        path: /home/ansible/.ssh
+        owner: ansible
+        group: ansible
+        mode: '0700'
+
+    - name: Generate SSH key if not exists
+      ansible.builtin.openssh_keypair:
+        path: /home/ansible/.ssh/id_rsa
+        type: rsa
+        size: 2048
+        owner: ansible
+        group: ansible
+        mode: '0600'
+        state: present
+
+    - name: Ensure correct permissions for the SSH public key
+      ansible.builtin.file:
+        path: /home/ansible/.ssh/id_rsa.pub
+        owner: ansible
+        group: ansible
+        mode: '0644'
+
+    - name: Add ansible user to sudoers
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regex: "ansible"
+        line: "ansible ALL=(ALL) NOPASSWD:ALL"
+        state: present
+        validate: visudo -cf %s
+
+
+#- name: Distribute ansible user's public key to all hosts
+#  hosts: all
+#  become: false
+#  tasks:
+#    - name: Copy ansible user's public key to target hosts
+#      ansible.builtin.authorized_key:
+#        user: ansible
+#        state: present
+#        key: "{{ lookup('file', '/home/ansible/.ssh/id_rsa.pub') }}"
+#
+#    - name: Copy root user's public key to target hosts
+#      ansible.builtin.authorized_key:
+#        user: ansible
+#        state: present
+#        key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+
+#- name: Accept SSH keys for all targets
+#  hosts: all
+#  gather_facts: false
+#  tasks:
+#    - name: Add target host keys to known_hosts for ansible user on master
+#      ansible.builtin.known_hosts:
+#        path: /home/ansible/.ssh/known_hosts
+#        name: "{{ inventory_hostname }}"
+#        key: "{{ lookup('pipe', 'ssh-keyscan -H ' + inventory_hostname) }}"
+#      become: true
+#      become_user: ansible
+#
+#    - name: Add target host keys to known_hosts for root user on master
+#      ansible.builtin.known_hosts:
+#        path: /root/.ssh/known_hosts
+#        name: "{{ inventory_hostname }}"
+#        key: "{{ lookup('pipe', 'ssh-keyscan -H ' + inventory_hostname) }}"
+#
+#
+#- name: Accept SSH keys for all targets
+#  hosts: all
+#  gather_facts: false
+#  tasks:
+#    - name: Scan and add target host keys to known_hosts on Ansible master
+#      delegate_to: localhost
+#      ansible.builtin.shell: |
+#        ssh-keyscan -H {{ inventory_hostname }} >> /home/ansible/.ssh/known_hosts
+#      become: true
+#      become_user: ansible
+#
+#
+#- name: Ensure sshpass is installed and copy SSH keys
+#  hosts: all
+#  become: true
+#  tasks:
+#    - name: Ensure sshpass is installed
+#      ansible.builtin.package:
+#        name: sshpass
+#        state: present
+#
+#    - name: Copy ansible user's public key to ansible user on all targets
+#      ansible.builtin.shell: |
+#        sshpass -p root ssh-copy-id -i /home/ansible/.ssh/id_rsa.pub -o StrictHostKeyChecking=no ansible@{{ inventory_hostname }}
+#      args:
+#        executable: /bin/bash
+#
+#    - name: Copy root user's public key to ansible user on all targets
+#      ansible.builtin.shell: |
+#        sshpass -p root ssh-copy-id -i /root/.ssh/id_rsa.pub -o StrictHostKeyChecking=no ansible@{{ inventory_hostname }}
+#      args:
+#        executable: /bin/bash

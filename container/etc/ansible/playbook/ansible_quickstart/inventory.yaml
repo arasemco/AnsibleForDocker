@@ -1,0 +1,29 @@
+containers:
+  vars:
+    ansible_user: root
+
+  hosts:
+    ansiblefordocker-arch-1:
+      ansible_host: 172.21.0.3
+
+    ansiblefordocker-alma-1:
+      ansible_host: 172.21.0.5
+
+    ansiblefordocker-alpine-1:
+      ansible_host: 172.21.0.2
+
+    ansiblefordocker-ubuntu-1:
+      ansible_host: 172.21.0.6
+
+
+controllers:
+  hosts:
+    ansiblefordocker-controller-1:
+      ansible_host: 172.21.0.4
+      ansible_user: root
+
+
+datacenter:
+  children:
+    containers:
+    controllers:
