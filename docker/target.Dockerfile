@@ -11,13 +11,14 @@ ENV BASE_IMAGE=$BASE_IMAGE
 # ===========================
 # Install Required Packages Based on Distribution
 # ===========================
-RUN case "$BASE_IMAGE" in \
-        archlinux:*) pacman -Syu --noconfirm && pacman -S --noconfirm openssh python ;; \
-        almalinux:*) yum update -y && yum install -y openssh-server python3.12 ;; \
-        alpine:*) apk update && apk add --no-cache openssh python3 bash ;; \
-        debian:*) apt update && apt install -y openssh-server python3 ;; \
-        ubuntu:*) apt update && apt install -y openssh-server python3 ;; \
-    esac
+RUN sh -c 'pm=$(command -v pacman || command -v yum || command -v apk || command -v apt) && \
+    case "$pm" in \
+        *pacman) pacman -Syu --noconfirm && pacman -S --noconfirm openssh python ;; \
+        *yum) yum update -y && yum install -y openssh-server python3.12 ;; \
+        *apk) apk update && apk add --no-cache openssh python3 bash ;; \
+        *apt) apt update && apt install -y openssh-server python3 ;; \
+        *) echo "Unsupported package manager" && exit 1 ;; \
+    esac'
 
 # ===========================
 # SSH Configuration
