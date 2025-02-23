@@ -1,6 +1,7 @@
 - name: Ensure bash, sudo, and create ansible user
   hosts: all
   remote_user: root
+  #become: true
 
   vars:
     ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
@@ -11,7 +12,53 @@
         name:
           - bash
           - sudo
+          - python3
+        state: latest
+
+    - name: Install Python virtualenv for Debian-based systems
+      ansible.builtin.apt:
+        name:
+          - python3-venv
         state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Python virtualenv for Alpine-based systems
+      ansible.builtin.apk:
+        name:
+          - py3-virtualenv
+        state: present
+      when: ansible_os_family == "Alpine"
+
+    - name: Install Python virtualenv for Arch-based systems
+      ansible.builtin.pacman:
+        name:
+          - python-virtualenv
+        state: present
+      when: ansible_os_family == "Archlinux"
+
+    - name: Ensure Python venv is available for RHEL-based systems
+      command: python3 -m venv --help
+      register: venv_check
+      changed_when: false
+      failed_when: venv_check.rc != 0
+      when: ansible_os_family == "RedHat"
+
+
+    - name: Create a virtual environment in /opt/ansible
+      command: python3 -m venv /opt/ansible
+      args:
+        creates: /opt/ansible/bin/activate
+
+    - name: Add virtual environment to system PATH
+      copy:
+        dest: /etc/profile.d/venv.sh
+        content: 'export PATH="/opt/ansible/bin:$PATH"'
+        mode: '0644'
+
+    - name: Load the new PATH
+      shell: source /etc/profile.d/venv.sh
+      args:
+        executable: /bin/bash
 
 #    - name: Generate a hashed password for ansible user
 #      ansible.builtin.command:

@@ -11,10 +11,13 @@ ENV BASE_IMAGE=$BASE_IMAGE
 # ===========================
 # Install Required Packages Based on Distribution
 # ===========================
-RUN if [ "$BASE_IMAGE" = "alpine:latest" ]; then apk update && apk add --no-cache openssh python3 bash; fi
-RUN if [ "$BASE_IMAGE" = "archlinux:latest" ]; then pacman -Syu --noconfirm && pacman -S --noconfirm openssh python3; fi
-RUN if [ "$BASE_IMAGE" = "almalinux:latest" ]; then yum update -y && yum install -y openssh-server; fi
-RUN if [ "$BASE_IMAGE" = "ubuntu:latest" ]; then apt update && apt install -y openssh-server; fi
+RUN case "$BASE_IMAGE" in \
+        archlinux:*) pacman -Syu --noconfirm && pacman -S --noconfirm openssh python ;; \
+        almalinux:*) yum update -y && yum install -y openssh-server python3.12 ;; \
+        alpine:*) apk update && apk add --no-cache openssh python3 bash ;; \
+        debian:*) apt update && apt install -y openssh-server python3 ;; \
+        ubuntu:*) apt update && apt install -y openssh-server python3 ;; \
+    esac
 
 # ===========================
 # SSH Configuration
