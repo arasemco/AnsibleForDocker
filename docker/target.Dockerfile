@@ -4,10 +4,6 @@
 ARG BASE_IMAGE=almalinux:latest
 FROM $BASE_IMAGE
 
-# Pass BASE_IMAGE as an environment variable for the shell
-ARG BASE_IMAGE
-ENV BASE_IMAGE=$BASE_IMAGE
-
 # ===========================
 # Install Required Packages Based on Distribution
 # ===========================
