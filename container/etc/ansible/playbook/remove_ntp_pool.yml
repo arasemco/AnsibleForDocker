@@ -1,0 +1,102 @@
+---
+# Ansible Playbook to remove public NTP pool entries (e.g., *.ntp.org) from chrony configuration
+#
+# Public NTP pools can be less secure or introduce compliance concerns in hardened environments.
+# This playbook removes those entries from the chrony config to ensure only private or approved NTP servers are used.
+#
+# Steps:
+# 1. Ensure ntp1.asemo.com or ntp2.asemo.com is configured in chrony.conf.
+# 2. Ensure both names are resolvable and reachable via chronyc.
+# 3. Detect if ntp.org is present in chrony configuration.
+# 4. If found, backup the current configuration file.
+# 5. Remove pool/server lines (including comments) that mention ntp.org.
+# 6. Validate removal.
+# 7. Restart chronyd if changes were made.
+# 8. Rollback and restore original config on failure.
+
+- name: Backup and remove public NTP pool from chrony configuration (Cross-Distro)
+  hosts: all
+  become: yes
+  vars:
+    config_paths:
+      default: "/etc/chrony.conf"
+  tasks:
+    - name: Set configuration file path
+      set_fact:
+        conf_path: "{{ config_paths['default'] }}"
+
+    - name: Ensure at least one asemo NTP server is configured
+      shell: grep -E '^\s*(pool|server)\s+ntp[12]\.asemo\.com\b' "{{ conf_path }}"
+      register: asemo_ntp_check
+      failed_when: asemo_ntp_check.rc != 0
+      changed_when: false
+
+    - name: Check if asemo NTP servers respond
+      shell: chronyc -a sources | grep -E 'ntp[12]\.asemo\.com'
+      register: asemo_ntp_reachable
+      failed_when: asemo_ntp_reachable.rc != 0
+      changed_when: false
+
+    - name: Check if ntp.org is present in chrony configuration
+      command: grep -Ei 'ntp\.org' "{{ conf_path }}"
+      register: ntp_check_initial
+      failed_when: false
+      changed_when: false
+
+    - name: Proceed only if ntp.org is detected
+      block:
+        - name: Generate backup file path
+          stat:
+            path: "{{ conf_path }}"
+          register: conf_stat
+
+        - name: Set backup file variable
+          set_fact:
+            conf_back: "{{ conf_path }}.{{ conf_stat.stat.checksum }}.bak"
+
+        - name: Backup the config file
+          copy:
+            src: "{{ conf_path }}"
+            dest: "{{ conf_back }}"
+            remote_src: yes
+            force: no
+
+        - name: Remove public NTP pool entries including comments
+          lineinfile:
+            path: "{{ conf_path }}"
+            regexp: '^\s*(#\s*)?.*\bntp\.org\b.*'
+            state: absent
+          register: config_changed
+
+        - name: Validate and restart chronyd if configuration was modified
+          block:
+            - name: Validate that no ntp.org remains
+              command: grep -Ei 'ntp\.org' "{{ conf_path }}"
+              register: ntp_check
+              failed_when: ntp_check.rc == 0
+
+            - name: Restart chronyd service
+              service:
+                name: chronyd
+                state: restarted
+              when: config_changed.changed
+
+          rescue:
+            - name: Rollback - Restore the backup file
+              copy:
+                src: "{{ conf_back }}"
+                dest: "{{ conf_path }}"
+                remote_src: yes
+
+            - name: Restart chronyd service after rollback
+              service:
+                name: chronyd
+                state: restarted
+
+        - name: Cleanup backup if no change was made
+          file:
+            path: "{{ conf_back }}"
+            state: absent
+          when: not config_changed.changed
+
+      when: ntp_check_initial.rc == 0
